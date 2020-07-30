@@ -2,7 +2,7 @@ project_css = """
 *{
 font-family:century-gothic;
 font-size: 16px;
-background-color: rgb(255, 255, 255);
+background-color: rgb(240, 240, 240);
 }
 
 QPushButton {
