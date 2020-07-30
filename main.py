@@ -1,4 +1,6 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QDesktopWidget, QStackedWidget, QWidget, QPushButton, QGridLayout
+from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QDesktopWidget,  \
+                            QStackedWidget, QWidget, QPushButton, QGridLayout, QVBoxLayout, \
+                            QLabel, QTableWidget, QTableWidgetItem
 from PyQt5 import QtGui, QtCore, QtWidgets
 import sys
 
@@ -62,11 +64,71 @@ class GamePage(QWidget):
         self.setLayout(self.grid)
 
         self.tetris = Tetris()
+        self.scores = HighScores()
         self.empty_space = QWidget()
-        self.grid.addWidget(self.tetris, 1, 0)
-        self.grid.addWidget(self.empty_space, 0, 0) 
-        self.grid.addWidget(self.empty_space, 2, 0)
-                
+        self.next_pieces = NexiPieces()
+        
+        self.grid.addWidget(self.scores, 0, 1)        
+        self.grid.addWidget(self.tetris, 0, 2)                 
+        self.grid.addWidget(self.next_pieces, 0, 3)        
+        
+
+class HighScores(QWidget):
+    def __init__(self):
+        super().__init__()
+        #self.setFixedSize(QtCore.QSize(300, 100))    
+        self.setFixedWidth(300) 
+        self.vbox = QVBoxLayout()                
+        self.setLayout(self.vbox)        
+        
+        self.title = QLabel("High scores")
+        empty_space = QWidget()
+
+        self.colsDict = {'Rank': 0, 'Player': 1, 'Score': 2}
+
+        self.scores_tbl= QTableWidget()        
+        self.scores_tbl.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.scores_tbl.setFrameShadow(QtWidgets.QFrame.Plain)
+        self.scores_tbl.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scores_tbl.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scores_tbl.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.scores_tbl.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
+        self.scores_tbl.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.scores_tbl.setShowGrid(False)
+        self.scores_tbl.setRowCount(0)        
+        self.scores_tbl.setColumnCount(3)
+        self.scores_tbl.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.scores_tbl.verticalHeader().setDefaultSectionSize(20)
+        self.scores_tbl.verticalHeader().hide()
+        self.scores_tbl.setHorizontalHeaderLabels([*self.colsDict])            
+
+        self.get_scores()
+
+        self.vbox.addWidget(self.title)        
+        self.vbox.addWidget(self.scores_tbl)
+        
+
+    def get_scores(self):
+        self.scores_tbl.setRowCount(0)
+        score_data = [(1, 'Tim', 1000), (2, 'Sam', 950), (3, 'Kate', 900)]
+
+        for row_num, row_data in enumerate(score_data):
+            self.scores_tbl.insertRow(row_num)
+            for column_num, data in enumerate(row_data):
+                self.scores_tbl.setItem(row_num, column_num, QTableWidgetItem(str(data)))
+
+
+class NexiPieces(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setFixedSize(QtCore.QSize(200, 400))     
+        self.grid = QGridLayout()                
+        self.setLayout(self.grid)        
+        
+        title = QLabel("Next")
+
+        self.grid.addWidget(title)
+
 
 class Tetris(QWidget):
     def __init__(self):
