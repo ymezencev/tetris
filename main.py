@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QDesktopWidget,  \
                             QStackedWidget, QWidget, QPushButton, \
                             QVBoxLayout, QHBoxLayout, QLabel                            
 from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.Qt import Qt
 import sys
 
 from styles import project_css
@@ -44,7 +45,7 @@ class MainWindow(QMainWindow):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
-        self.move(qr.topLeft())
+        self.move(qr.topLeft())    
 
 
 class StartPage(QWidget):
@@ -64,6 +65,7 @@ class StartPage(QWidget):
 class GamePage(QWidget):
     def __init__(self):
         super().__init__()		        
+        
         self.hbox = QHBoxLayout()        
         self.setLayout(self.hbox)        
 

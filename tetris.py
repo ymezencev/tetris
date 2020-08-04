@@ -1,11 +1,10 @@
-import  subprocess
-
 from PyQt5.QtWidgets import QStackedWidget, QWidget, QPushButton, \
                             QGridLayout, QVBoxLayout, QHBoxLayout, \
                             QLabel, QTableWidget, QTableWidgetItem
 from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.Qt import Qt
 
-
+import random
 
 class HighScores(QWidget):
     def __init__(self):
@@ -53,12 +52,59 @@ class HighScores(QWidget):
                 self.scores_tbl.setItem(row_num, column_num, QTableWidgetItem(str(data)))        
 
 
-class Piece(QPushButton):
-    def __init__(self, color='#FFFFFF'):
+class Cube(QPushButton):
+    def __init__(self, color='#fff'):
         super().__init__()		
         self.color = color
+        self.locked = False
         self.setFixedSize(QtCore.QSize(40, 40))
+        self.update(self.color)        
+
+    def update(self, color="#fff"):
+        self.color = color
         self.setStyleSheet(f'background: {self.color};')
+
+
+class Piece:
+    def __init__(self, piece_num, piece_pos, x, y):
+        self.x = x
+        self.y = y
+        self.piece_num = piece_num
+        self.piece_pos = piece_pos
+        self.locked = False
+
+        O = [[(0, 0), (-1, 0), (-1, -1), (0, -1)]]
+        I = [[(-2, 0), (-1, 0), (0, 0), (1, 0)], 
+             [(0, 1), (0, 0), (0, -1), (0, -2)]]
+        S = [[(-1, -1), (0, -1), (0, 0), (1, 0)],
+             [(0, 1), (0, 0), (1, 0), (1. -1)]]
+        Z = [[(-1, 0), (0, 0), (0, -1), (1, -1)],
+             [(1, 1), (1, 0), (0, 0), (0, -1)]]
+        L = [[(-1, -1), (-1, 0), (0, 0), (1, 0)],
+             [(0, 1), (0, 0), (0, -1), (1, -1)],
+             [(-1, 0), (0, 0), (1, 0), (1, 1)],
+             [(-1, 1), (0, 1), (0, 0), (0, -1)]]
+        J = [[(-1, 0), (0, 0), (1, 0), (1, -1)],
+             [(0, -1), (0, 0), (0, 1), (1, 1)],
+             [(-1, 1), (-1, 0), (0, 0), (1, 0)],
+             [(-1, -1), (0, -1), (0, 0), (0, 1)]]
+        T = [[(-1, 0), (0, 0), (0, -1), (1, 0)],
+             [(0, 1), (0, 0), (1, 0), (0, -1)],
+             [(-1, 0), (0, 0), (0, 1), (1, 0)],
+             [(-1, 0), (0, 0), (0, 1), (0, -1)]]   
+
+        self.shapes = [O, I, S, Z, L, J, T]
+        colors = ['blue', 'red', 'yellow', 'green', 'pink', 'orange', 'brown']
+        self.color = colors[self.piece_num]        
+        self.check_pos()
+
+    def check_pos(self):
+        if self.piece_pos >= len(self.shapes[self.piece_num]):
+            self.piece_pos = 0
+
+    def get_coords(self):
+        self.check_pos()    
+        return self.shapes[self.piece_num][self.piece_pos]
 
 
 class NexiPieces(QWidget):
@@ -75,52 +121,155 @@ class NexiPieces(QWidget):
 
 class Tetris(QWidget):
     def __init__(self):
-        super().__init__()		           
+        super().__init__()		                
         self.vbox = QVBoxLayout()
         self.setFixedWidth(450)
         self.vbox.setAlignment(QtCore.Qt.AlignTop)
         self.setLayout(self.vbox)
-
 
         self.tetrisbox = QWidget()
         self.tetrisbox.setFixedSize(QtCore.QSize(410, 820))                   
         self.grid = QGridLayout()        
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setSpacing(1)        
-        self.tetrisbox.setLayout(self.grid)                
-
-        self.field = [[Piece() for j in range(10)] for i in range(20)]        
-        self.draw_field()
-
-        self.field[1][1] = Piece('#000000')
-        self.draw_field()
-        self.field[2][2] = Piece('#ff0000')
-        self.field[1][1] = Piece('#ff0000')
-
-        self.draw_field()
+        self.tetrisbox.setLayout(self.grid) 
         
+        self.board = [[Cube() for j in range(20)] for i in range(10)]
+        self.current_piece = None
 
+        QtWidgets.qApp.installEventFilter(self) 
+        self.update_board()        
+        self.play_game()
         
-        self.vbox.addWidget(self.tetrisbox)        
+        self.vbox.addWidget(self.tetrisbox)
 
-    def draw_field(self):
-    	for row_num, row_val in enumerate(self.field):
-            for col_num, col_val in enumerate(row_val):
-                self.grid.removeWidget(col_val)
-                self.grid.addWidget(col_val, row_num, col_num)
+    def update_board(self):
+        # clear not locked cubes  
+        for col_num, col_cubes in enumerate(self.board):
+            for row_num, row_cube in enumerate(col_cubes):
+                self.grid.removeWidget(row_cube)
+                if not row_cube.locked:
+                    row_cube.update()
+                self.grid.addWidget(row_cube, row_num, col_num)                
 
-    def remove_field(self):
-    	for row_num, row_val in enumerate(self.field):
-            for col_num, col_val in enumerate(row_val):
-                self.grid.removeWidget(col_val)
-                col_val.deleteLater()
+    def remove_board(self): 
+        for col_num, col_cubes in enumerate(self.board):
+            for row_num, row_cube in enumerate(col_cubes):
+                self.grid.removeWidget(row_cube)                
+                row_cube.deleteLater()    	
 
-    def deleteGridWidget(self, index):
-        item = self.sa_grid.itemAt(index)
-        if item is not None:
-        	widget = item.widget()
-        	if widget is not None:
-        		self.sa_grid.removeWidget(widget)
-        		widget.deleteLater()
+    def get_piece(self):
+    	# rand num to get rand piece
+        piece_num = random.randint(0,6)        
+        start_x = 5
+        start_y = 0
+        return Piece(piece_num=piece_num, piece_pos=0, x=start_x, y=start_y)
 
+    def draw_piece(self, piece):
+        # method adds piece to the board        
+        x, y = 0, 1   
+        coords = piece.get_coords()                
+        for coords in piece.get_coords():            
+            new_x = piece.x + coords[x]
+            new_y =  piece.y + coords[y]            
+            if (0 <= new_y < len(self.board[0])) and (0 <= new_x < len(self.board)):
+                self.board[new_x][new_y].update(piece.color)  
 
+    def check_lock(self, piece):
+        x, y = 0, 1
+        for coords in piece.get_coords():            
+            _x = piece.x + coords[x]
+            _y = piece.y + coords[y]
+            if _y == len(self.board[0])-1:
+                return True
+            if self.board[_x][_y+1].locked:
+                return True
+            if self.board[_x+1][_y].locked:
+                return True
+        return False
+
+    def lock_piece(self, piece):
+        x, y = 0, 1
+        for coords in piece.get_coords():            
+            _x = piece.x + coords[x]
+            _y = piece.y + coords[y]
+            self.board[_x][_y].locked = True
+        piece.locked = True
+
+    def try_move(self, piece, dx=0, dy=0): 
+        x, y = 0, 1
+        if piece is None:
+            return False        
+        for coords in piece.get_coords():            
+            new_x = piece.x + coords[x] + dx
+            new_y = piece.y + coords[y] + dy
+            if not (0 <= new_y < len(self.board[0])):
+                return False
+            if not (0 <= new_x < len(self.board)):
+                return False
+            if self.board[new_x][new_y].locked:
+                return False
+        return True
+
+    def move_piece(self, piece, dx=0, dy=0):
+        if piece.locked:
+            return
+        if self.try_move(piece, dx=dx, dy=dy):
+            piece.y += dy
+            piece.x += dx
+            self.update_board()        
+            self.draw_piece(piece)
+            if self.check_lock(piece):
+                self.lock_piece(piece)
+
+    def try_rotate(self, piece):
+        if piece.locked:
+            return
+        prev_pos = piece.piece_pos
+        piece.piece_pos += 1
+        if not self.try_move(piece):
+            piece.piece_pos = prev_pos
+            return False
+        return True
+     
+    def rotate_piece(self, piece):
+        if self.try_rotate(piece):            
+            self.update_board()        
+            self.draw_piece(piece)
+            if self.check_lock(piece):
+                self.lock_piece(piece)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.KeyPress:                    
+            key = event.key()
+            if key == Qt.Key_Left:
+                self.move_piece(self.current_piece, dx=-1)
+                return 1
+            if key == Qt.Key_Right:
+                self.move_piece(self.current_piece, dx=1)
+                return 1            
+            if key == Qt.Key_Down:
+                self.move_piece(self.current_piece, dy=1)
+                return 1  
+            if key == Qt.Key_Up:
+                self.rotate_piece(self.current_piece)
+                return 1                                  
+        return super().eventFilter(obj, event)
+
+    def init_game(self):            
+        self.update_board()
+
+    def play_game(self):
+        # main game loop
+        
+        if self.current_piece is None:
+            self.current_piece = self.get_piece()
+            self.next_piece = self.get_piece()
+            self.update_board()
+            self.draw_piece(self.current_piece) 
+        if self.current_piece.locked:
+            self.current_piece =  self.next_piece
+            self.next_piece = self.get_piece()
+            self.update_board()
+            self.draw_piece(self.current_piece)              
+        print("game")
