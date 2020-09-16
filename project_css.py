@@ -1,4 +1,4 @@
-project_css = """
+style = """
 *{
 font-family:century-gothic;
 font-size: 16px;

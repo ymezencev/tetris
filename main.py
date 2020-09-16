@@ -1,34 +1,31 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QDesktopWidget,  \
-                            QStackedWidget, QWidget, QPushButton, \
-                            QVBoxLayout, QHBoxLayout, QLabel                            
-from PyQt5 import QtGui, QtCore, QtWidgets
-from PyQt5.Qt import Qt
+
 import sys
 
-from styles import project_css
-from config import WINDOW_WIDTH, WINDOW_HEIGHT
-
+from PyQt5 import QtGui, QtCore, QtWidgets                           
+from project_css import style
 from tetris import HighScores, Tetris, NexiPieces
 
+
+WINDOW_WIDTH = 1200
+WINDOW_HEIGHT = 900
 pages = {"StartPage": 0, "GamePage": 1}
 
 
-class MainWindow(QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
+    # The main window that contains all the pages
     def __init__(self):
         super().__init__()    
 
         # Main window settings 
-        self.width = WINDOW_WIDTH
-        self.height = WINDOW_HEIGHT
         self.icon = "logo.png"
 
         self.setWindowTitle('Tetris')
-        self.setMinimumSize(self.width, self.height)                
+        self.setMinimumSize(WINDOW_WIDTH, WINDOW_HEIGHT)                
         self.setWindowIcon(QtGui.QIcon(self.icon))    
-        self.setStyleSheet(project_css)           						        
+        self.setStyleSheet(style)                                         
         
-		# Pages
-        self.appStack = QStackedWidget()
+        # App pages
+        self.appStack = QtWidgets.QStackedWidget()
         
         self.startPage = StartPage()                
         self.gamePage = GamePage()
@@ -42,19 +39,21 @@ class MainWindow(QMainWindow):
         self.center()
 
     def center(self):
+        # Move an app to the center of a screen
         qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
+        cp = QtWidgets.QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())    
 
 
-class StartPage(QWidget):
+class StartPage(QtWidgets.QWidget):
+    # The first page you see when you launch the app
     def __init__(self):
-        super().__init__()		        
-        self.hbox = QHBoxLayout()            
+        super().__init__()              
+        self.hbox = QtWidgets.QHBoxLayout()            
         self.setLayout(self.hbox)
 
-        self.start_btn = QPushButton()
+        self.start_btn = QtWidgets.QPushButton()
         self.start_btn.setFixedSize(QtCore.QSize(400, 120))
         self.start_btn.setText("START GAME")
         self.start_btn.clicked.connect(lambda: window.appStack.setCurrentIndex(pages["GamePage"]))
@@ -62,16 +61,17 @@ class StartPage(QWidget):
         self.hbox.addWidget(self.start_btn)
 
 
-class GamePage(QWidget):
+class GamePage(QtWidgets.QWidget):
+    # Page where you play tetris    
     def __init__(self):
-        super().__init__()		        
+        super().__init__()              
         
-        self.hbox = QHBoxLayout()        
+        self.hbox = QtWidgets.QHBoxLayout()        
         self.setLayout(self.hbox)        
 
         self.tetris = Tetris()        
         self.scores = HighScores()
-        self.empty_space = QWidget()
+        self.empty_space = QtWidgets.QWidget()
         self.next_pieces = NexiPieces()
         
         self.hbox.addWidget(self.scores)
@@ -80,7 +80,7 @@ class GamePage(QWidget):
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())

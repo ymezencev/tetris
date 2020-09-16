@@ -1,10 +1,10 @@
-from PyQt5.QtWidgets import QStackedWidget, QWidget, QPushButton, \
-                            QGridLayout, QVBoxLayout, QHBoxLayout, \
-                            QLabel, QTableWidget, QTableWidgetItem
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.Qt import Qt, QTimer
+from PyQt5.QtWidgets import QWidget, QPushButton, QGridLayout, QVBoxLayout, \
+                            QLabel, QTableWidget, QTableWidgetItem
 
 import random
+
 
 class HighScores(QWidget):
     def __init__(self):
@@ -49,28 +49,35 @@ class HighScores(QWidget):
         for row_num, row_data in enumerate(score_data):
             self.scores_tbl.insertRow(row_num)
             for column_num, data in enumerate(row_data):
-                self.scores_tbl.setItem(row_num, column_num, QTableWidgetItem(str(data)))        
+                self.scores_tbl.setItem(row_num, column_num, 
+                                        QTableWidgetItem(str(data)))        
 
 
 class Cube(QPushButton):
+    # tetris grid consists of 20x10 cubes
     def __init__(self, color='#fff'):
-        super().__init__()		
+        super().__init__()           
         self.color = color
         self.locked = False
         self.setFixedSize(QtCore.QSize(40, 40))
-        self.update(self.color)        
+        self.set_color(self.color)        
 
-    def update(self, color="#fff"):
-        self.color = color
-        self.setStyleSheet(f'background: {self.color};')
+    def set_color(self, color="#fff"):        
+        if not self.locked:
+            self.color = color
+            self.setStyleSheet(f'background: {self.color};')
+
+    def clear(self):
+        self.set_color()
 
 
 class Piece:
-    def __init__(self, piece_num, piece_pos, x, y):
+    # one piece consists of several colored cubes    
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.piece_num = piece_num
-        self.piece_pos = piece_pos
+        self.shape = random.randint(0,6)
+        self.position = 0
         self.locked = False
 
         O = [[(0, 0), (-1, 0), (-1, -1), (0, -1)]]
@@ -99,22 +106,29 @@ class Piece:
              [(-1, 0), (0, 0), (0, 1), (1, 0)],
              [(-1, 0), (0, 0), (0, 1), (0, -1)]]   
 
-        self.shapes = [O, I, S, Z, L, J, T]
+        self.all_shapes = [O, I, S, Z, L, J, T]
         colors = ['blue', 'red', 'yellow', 'green', 'pink', 'orange', 'brown']
-        self.color = colors[self.piece_num]        
-        self.check_pos()
 
-    def check_pos(self):
-        # check if piece_pos has been exceeded
-        if self.piece_pos >= len(self.shapes[self.piece_num]):
-            self.piece_pos = 0
+        self.color = colors[self.shape]
+
+    def move_next_pos(self):
+        # checks if piece_pos has been exceeded
+        self.position += 1
+        if self.position >= len(self.all_shapes[self.shape]):
+            self.position = 0        
 
     def get_coords(self):
-        self.check_pos()    
-        return self.shapes[self.piece_num][self.piece_pos]
+        return self.all_shapes[self.shape][self.position]
 
-    def get_top_y(self):
-        return min([y for x,y in self.get_coords()])
+    def get_absolute_coords(self):        
+        abs_coords = []
+        for coords in self.get_coords():
+            abs_x, abs_y = self.x + coords[0], self.y + coords[1]
+            # we dont get cubes positions above the board, 
+            # so we can rotate and move piece on top
+            if abs_y >= 0:
+                abs_coords.append((abs_x, abs_y))
+        return abs_coords
 
 
 class NexiPieces(QWidget):
@@ -131,7 +145,7 @@ class NexiPieces(QWidget):
 
 class Tetris(QWidget):
     def __init__(self):
-        super().__init__()		      
+        super().__init__()            
         # Tetris layout parameters          
         self.vbox = QVBoxLayout()
         self.setFixedWidth(450)
@@ -146,182 +160,180 @@ class Tetris(QWidget):
         self.tetrisbox.setLayout(self.grid) 
         QtWidgets.qApp.installEventFilter(self)
 
-        # Tetris parameters
-        self.board = [[Cube() for j in range(20)] for i in range(10)]
-        self.current_piece = None
-        self.next_piece = None
+        # Tetris game parameters
+        self.score = 0
+        self.speed = 1000
+        self.level = 1        
 
-        self.update_board()                            
-        self.play_game()
-        self.vbox.addWidget(self.tetrisbox)
+        self.row_len = 10
+        self.col_len = 20
+        self.board = [[Cube() for i in range(self.row_len)] 
+                                  for j in range(self.col_len)]                    
 
-    def init_game(self):
+        self.timer = QTimer(self)        
+        self.timer.timeout.connect(self.game_loop)
+        self.next_level()
+
         self.current_piece = self.get_piece()
-        self.next_piece = self.get_piece()
-        self.update_board()
-        self.draw_piece() 
+        self.next_piece = self.get_piece()                
+        
+        self.clear_board()
+        self.draw_piece()
+        self.vbox.addWidget(self.tetrisbox)
+    
+    def next_level(self):
+        self.level *= 2
+        self.time = self.speed / self.level
+        self.timer.setInterval(self.time)
+        self.timer.start()
 
-    def play_game(self):
-        # main game loop          
-        self.init_game()
-        self.timer = QTimer(self)
-        self.timer.setInterval(1000)
-        self.timer.timeout.connect(self.game_cycle)
-        self.timer.start()                      
-                               
-    def game_cycle(self):                
+
+    def game_loop(self):        
+        # main game loop                       
 
         if self.game_over():
             print("Game Over!")
-            return
+            return        
 
         if self.current_piece.locked:
-            print("Next one pls!")
+            if self.try_remove_lines():
+                self.next_level()
             self.current_piece =  self.next_piece
             self.next_piece = self.get_piece()
-            print(self.current_piece.x, self.current_piece.y)
-            self.update_board()
-            self.draw_piece()
+            self.draw_piece() 
             return
-
-        self.go_down()
-
-    def game_over(self):
-        if self.check_lock() and self.current_piece.y == 0:
-            return True
-        return False
-
-    def update_board(self):
+                
+        self.fall_piece()
+                             
+    def clear_board(self):
         # clear not locked cubes  
-        for col_num, col_cubes in enumerate(self.board):
-            for row_num, row_cube in enumerate(col_cubes):
-                self.grid.removeWidget(row_cube)
-                if not row_cube.locked:
-                    row_cube.update()
-                self.grid.addWidget(row_cube, row_num, col_num)                
-
-    def remove_board(self): 
-        for col_num, col_cubes in enumerate(self.board):
-            for row_num, row_cube in enumerate(col_cubes):
-                self.grid.removeWidget(row_cube)                
-                row_cube.deleteLater()    	
+        for row_num, row_cubes in enumerate(self.board):
+            for col_num, col_cube in enumerate(row_cubes):
+                self.grid.removeWidget(col_cube)                
+                col_cube.clear()
+                self.grid.addWidget(col_cube, row_num, col_num) 
 
     def get_piece(self):
-    	# rand num to get rand piece
-        piece_num = random.randint(0,6)        
-        start_x = 5
-        start_y = 0
-
-        return Piece(piece_num=piece_num, piece_pos=0, x=start_x, y=start_y)
+        # get random piece              
+        start_pos = (round(self.row_len/2), 0)
+        return Piece(*start_pos)        
 
     def draw_piece(self):
+        self.clear_board()
         # method adds piece to the board  
         if self.current_piece is None:
             return      
-        x, y = 0, 1      
-        # fix top position     
-        top_y =  self.current_piece.y + self.current_piece.get_top_y()                      
-        if top_y < 0:
-            if not self.check_lock():
-                self.current_piece.y += abs(top_y)
-        # draw piece
-        for coords in self.current_piece.get_coords():            
-            new_x = self.current_piece.x + coords[x]
-            new_y =  self.current_piece.y + coords[y]            
-            if (0 <= new_y < len(self.board[0])) and (0 <= new_x < len(self.board)):
-                self.board[new_x][new_y].update(self.current_piece.color)  
-
-    def check_lock(self):
-        if self.current_piece is None:
-            return
-        x, y = 0, 1
-        for coords in self.current_piece.get_coords():            
-            _x = self.current_piece.x + coords[x]
-            _y = self.current_piece.y + coords[y]            
-            if _y == len(self.board[0])-1:
-                return True
-            if self.board[_x][_y+1].locked:
-                return True            
-        return False
-
-    def lock_piece(self):
-        if self.current_piece is None:
-            return
-        x, y = 0, 1
-        for coords in self.current_piece.get_coords():            
-            _x = self.current_piece.x + coords[x]
-            _y = self.current_piece.y + coords[y]
-            self.board[_x][_y].locked = True
-        self.current_piece.locked = True
-
-    def try_move(self, dx=0, dy=0): 
-        x, y = 0, 1
-        if self.current_piece is None:
-            return False        
-    
-        for coords in self.current_piece.get_coords():            
-            new_x = self.current_piece.x + coords[x] + dx
-            new_y = self.current_piece.y + coords[y] + dy
-            if not (0 <= new_y < len(self.board[0])):
-                return False
-            if not (0 <= new_x < len(self.board)):
-                return False
-            if self.board[new_x][new_y].locked:
-                return False      
-
-        return True
+        for coords in self.current_piece.get_absolute_coords():
+            _x, _y = coords
+            if self.check_out_conditions(x=_x, y=_y):                
+                self.board[_y][_x].set_color(self.current_piece.color) 
 
     def move_piece(self, dx=0, dy=0):
         if self.current_piece is None:
             return
         if self.current_piece.locked:
-            return
-        if self.try_move(dx=dx, dy=dy):
+            return        
+        if self.try_move(dx=dx, dy=dy):            
             self.current_piece.y += dy
             self.current_piece.x += dx
-            self.update_board()        
+            self.clear_board()        
             self.draw_piece()
-            if self.check_lock():
-                self.lock_piece()
+            self.try_lock_piece()
 
-    def try_rotate(self):
-        if self.current_piece is None:
-            return
-        if self.current_piece.locked:
-            return
-        prev_pos = self.current_piece.piece_pos
-        self.current_piece.piece_pos += 1
-        if not self.try_move():
-            self.current_piece.piece_pos = prev_pos
-            return False
-        return True
-     
+
     def rotate_piece(self):
         if self.current_piece is None:
             return
         if self.try_rotate():            
-            self.update_board()        
+            self.clear_board()        
             self.draw_piece()
-            if self.check_lock():
-                self.lock_piece()
+            self.try_lock_piece()
 
-    def go_down(self):
+    def fall_piece(self):
         self.move_piece(dy=1)
 
-    def eventFilter(self, obj, event):
+    def try_lock_piece(self):
+        if self.check_lock_conditions():
+            for coords in self.current_piece.get_absolute_coords():
+                _x, _y = coords
+                self.board[_y][_x].locked = True
+            self.current_piece.locked = True     
+        return True       
+
+    def try_remove_lines(self):
+        for row_num, row in enumerate(self.board):
+            if set([col.locked for col in row]) <= {1}:
+                for col in row:
+                        col.setParent(None)
+                del self.board[row_num]
+                self.board.insert(0, [Cube() for i in range(self.row_len)])        
+                return True
+        return False        
+
+
+    def eventFilter(self, obj, event):        
         if event.type() == QtCore.QEvent.KeyPress:                    
             key = event.key()
+
             if key == Qt.Key_Left:
-                self.move_piece(dx=-1)
-                return 1
+                self.move_piece(dx=-1)                
             if key == Qt.Key_Right:
-                self.move_piece(dx=1)
-                return 1            
+                self.move_piece(dx=1)                
             if key == Qt.Key_Down:
-                self.move_piece(dy=1)
-                return 1  
+                self.move_piece(dy=1)                
             if key == Qt.Key_Up:
                 self.rotate_piece()
-                return 1                                  
+
+            return True 
         return super().eventFilter(obj, event)
 
+    def check_out_conditions(self, x, y):
+        # checks if cube coords are out of the board        
+        if (y < self.col_len) and (0 <= x < self.row_len):
+            return True
+        else:
+            return False
+
+    def try_move(self, dx=0, dy=0):         
+        # check if we can move piece
+        if self.current_piece is None:
+            return False     
+
+        for coords in self.current_piece.get_absolute_coords():
+            _x = coords[0] + dx
+            _y = coords[1] + dy
+            if not self.check_out_conditions(x=_x, y=_y):
+                return False       
+            if self.board[_y][_x].locked:                
+                return False           
+        return True     
+
+    def try_rotate(self):
+        # check if we can rotate piece
+        if self.current_piece is None:
+            return
+        if self.current_piece.locked:
+            return
+        prev_position = self.current_piece.position
+        self.current_piece.move_next_pos()
+        if not self.try_move():
+            self.current_piece.position = prev_position
+            return False
+        return True   
+
+    def check_lock_conditions(self):
+        if self.current_piece is None:
+            return      
+        for coords in self.current_piece.get_absolute_coords():
+            _x, _y = coords
+
+            if _y == self.col_len - 1:
+                return True
+            if self.board[_y+1][_x].locked:
+                return True           
+        return False        
+
+    def game_over(self):
+        if self.check_lock_conditions() and self.current_piece.y == 0:
+            return True
+        return False        
