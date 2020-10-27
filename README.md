@@ -3,6 +3,9 @@
 
 ### Play tetris, have fun. Destroy lines of block before it reaches the top.
 
+![tetris-app-interface](https://user-images.githubusercontent.com/60066986/97372156-fdc27100-18c3-11eb-9dd5-71967e13a334.png)
+
+
 # Installation 
 1. Clone this repository into your directory
 ```
