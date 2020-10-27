@@ -32,8 +32,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.appStack.addWidget(self.startPage)
         self.appStack.addWidget(self.gamePage)               
 
-        #self.appStack.setCurrentIndex(pages['StartPage'])
-        self.appStack.setCurrentIndex(pages['GamePage'])        
+        self.appStack.setCurrentIndex(pages['StartPage'])
+        #self.appStack.setCurrentIndex(pages['GamePage'])
         self.setCentralWidget(self.appStack)
 
         self.center()
